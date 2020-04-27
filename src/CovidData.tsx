@@ -1,14 +1,29 @@
 import * as React from 'react';
 import { Spinner, Pane, InlineAlert } from 'evergreen-ui';
 
-import { isPresent } from './Utils';
+import { isPresent, onlyUnique } from './Utils';
 
 const Timeline = ({ status }: { status: any[] }): React.ReactElement => {
-  const startDates = status.map(entry => entry.StartDateStruct.StartDate);
-  const startDateType = status.map(
-    entry => entry.StartDateStruct.StartDateType,
-  );
-  console.log(startDates, startDateType);
+  const startDates = status
+    .map(entry => {
+      const startDate =
+        entry.Study?.ProtocolSection?.StatusModule?.StartDateStruct?.StartDate;
+      let formattedDate = startDate;
+      // eslint-disable-next-line no-restricted-globals
+      if (startDate && isNaN(new Date(startDate).getTime())) {
+        const midMonth = startDate.split(' ');
+        const newDate = `${midMonth[0]} 15, ${midMonth[1]}`;
+        formattedDate = new Date(newDate);
+      }
+      if (startDate) formattedDate = new Date(startDate);
+      return {
+        ...entry,
+        formattedDate,
+      };
+    })
+    .filter(entry => isPresent(entry.formattedDate))
+    .sort((a, b) => a.formattedDate.getTime() - b.formattedDate.getTime());
+  console.log(startDates, status);
   return <></>;
 };
 
@@ -44,16 +59,14 @@ export const CovidData = ({
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeStamp.getTime()]);
-  console.log(data);
+  // console.log(data);
   return (
     <Pane elevation={1} padding={24} marginBottom={8} background="#FFFFFF">
       {data.length < 1 && <LoadingTrialData />}
       {data.length > 0 && (
         <>
           <Timeline
-            status={data
-              .map(entry => entry.Study?.ProtocolSection?.StatusModule)
-              .filter(isPresent)}
+            status={data.map(entry => entry).filter(isPresent)}
           ></Timeline>
         </>
       )}
