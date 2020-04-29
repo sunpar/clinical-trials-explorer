@@ -1,7 +1,11 @@
 import * as React from 'react';
-import { Spinner, Pane, InlineAlert } from 'evergreen-ui';
+import * as moment from 'moment';
+import { Spinner, Pane, InlineAlert, Text, Alert } from 'evergreen-ui';
 
-import { isPresent, onlyUnique } from './Utils';
+import { isPresent } from './Utils';
+import { ReBarChart } from './Data Viz/barChart';
+
+const maxStudyStartDate = new Date('12/20/2019').getTime();
 
 const Timeline = ({ status }: { status: any[] }): React.ReactElement => {
   const startDates = status
@@ -21,10 +25,46 @@ const Timeline = ({ status }: { status: any[] }): React.ReactElement => {
         formattedDate,
       };
     })
-    .filter(entry => isPresent(entry.formattedDate))
+    .filter(
+      entry =>
+        isPresent(entry.formattedDate) &&
+        entry.formattedDate.getTime() >= maxStudyStartDate,
+    )
     .sort((a, b) => a.formattedDate.getTime() - b.formattedDate.getTime());
-  console.log(startDates, status);
-  return <></>;
+
+  return (
+    <>
+      <Pane display="flex" flexDirection="row">
+        <Pane
+          float="left"
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+          flexDirection="column"
+        >
+          <Text>{startDates.length.toLocaleString()}</Text>
+          <Text size={300}>Trials with Valid Start Dates</Text>
+        </Pane>
+        <Pane
+          float="left"
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+          flexDirection="column"
+        >
+          <Text size={300}>Trials per Start Date</Text>
+          <ReBarChart
+            data={startDates.map(entry =>
+              moment(entry.formattedDate)
+                .startOf('week')
+                .format('MMM Do YYYY')
+                .toString(),
+            )}
+          ></ReBarChart>
+        </Pane>
+      </Pane>
+    </>
+  );
 };
 
 const LoadingTrialData = (): React.ReactElement => {
@@ -46,10 +86,16 @@ export const CovidData = ({
   dataPromises: Promise<Response[]>;
 }): React.ReactElement => {
   const [data, setData] = React.useState<any[]>([]);
+  const [apiDate, setAPIDate] = React.useState<Date | null>(null);
+
   React.useEffect(() => {
     const fetchData = async (): Promise<any[]> => {
       const resps = await dataPromises;
       const respsJson = await Promise.all(resps.map(res => res.json()));
+      const dateArray = respsJson[0].FullStudiesResponse.DataVrs.split(' ');
+      dateArray[0] = dateArray[0].replace(/:/g, '-');
+      const dateString = `${dateArray.join('T')}Z`;
+      setAPIDate(new Date(dateString));
       const covidTrialData = respsJson.reduce((total, curr) => {
         return total.concat(...curr.FullStudiesResponse.FullStudies);
       }, []);
@@ -59,17 +105,20 @@ export const CovidData = ({
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeStamp.getTime()]);
-  // console.log(data);
+
   return (
-    <Pane elevation={1} padding={24} marginBottom={8} background="#FFFFFF">
-      {data.length < 1 && <LoadingTrialData />}
-      {data.length > 0 && (
-        <>
-          <Timeline
-            status={data.map(entry => entry).filter(isPresent)}
-          ></Timeline>
-        </>
-      )}
-    </Pane>
+    <>
+      <Alert
+        intent="none"
+        title={`Data Updated ${apiDate?.toLocaleString()}`}
+        marginBottom={8}
+      />
+      <Pane elevation={1} padding={24} marginBottom={8} background="#FFFFFF">
+        {data.length < 1 && <LoadingTrialData />}
+        {data.length > 0 && (
+          <Timeline status={data.filter(isPresent)}></Timeline>
+        )}
+      </Pane>
+    </>
   );
 };

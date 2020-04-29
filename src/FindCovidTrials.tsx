@@ -1,6 +1,6 @@
 import * as React from 'react';
 import useFetch from 'fetch-suspense';
-import { Pane, Alert, Text } from 'evergreen-ui';
+import { Pane, Text } from 'evergreen-ui';
 
 import { CovidData } from './CovidData';
 
@@ -32,11 +32,11 @@ export const FindCovidTrials = (): React.ReactElement => {
 
   return (
     <>
-      <Alert
+      {/* <Alert
         intent="none"
         title={`Data Retrieved ${timeStamp.toLocaleString()}`}
         marginBottom={8}
-      />
+      /> */}
       <Pane elevation={1} padding={24} marginBottom={8} background="#FFFFFF">
         <Pane display="flex" flexDirection="row" justifyContent="space-around">
           <Pane
